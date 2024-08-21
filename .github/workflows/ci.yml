@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: 8.2
+
+    - name: Validate composer.json and composer.lock
+      run: make validate
+
+    - name: Install dependencies
+      run: make install
+
+    - name: Run linter
+      run: make lint
+
+#    - name: Run tests
+#      run: make test
+#
+#    - name: Upload code coverage report
+#      uses: paambaati/codeclimate-action@v6.0.0
+#      env:
+#        CC_TEST_REPORTER_ID: ${{secrets.CC_TEST_REPORTER_ID}}
+#      with:
+#        coverageCommand: make test-with-coverage
+#        coverageLocations: ${{github.workspace}}/tests/reports/coverage.xml:clover
