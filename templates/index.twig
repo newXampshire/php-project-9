@@ -13,17 +13,19 @@
                         <input
                                 type="text"
                                 name="url[name]"
-                                value=""
-                                class="form-control form-control-lg"
+                                value="{{ name }}"
+                                class="form-control form-control-lg {% if errors is not empty %}is-invalid{% endif %}"
                                 placeholder="https://www.example.com"
+
                         >
+                        {% for error in errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
                     </div>
                     <div class="col-2">
                         <input type="submit" class="btn btn-primary btn-lg ms-3 px-5 text-uppercase mx-3" value="Проверить">
                     </div>
-
                 </form>
-
             </div>
         </div>
     </div>
