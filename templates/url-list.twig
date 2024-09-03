@@ -22,8 +22,8 @@
                                 {{ url.name }}
                             </a>
                         </td>
-                        <td></td>
-                        <td></td>
+                        <td>{{ url.urlCheck.createdAt.format('Y-m-d H:i:s') }}</td>
+                        <td>{{ url.urlCheck.statusCode }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>

@@ -1,6 +1,8 @@
 <?php
 
 use App\DB\DatabaseConnector;
+use App\Models\Url;
+use App\Services\UrlCheckService;
 use App\Services\UrlService;
 use App\Validators\UrlValidator;
 use DI\Container;
@@ -23,6 +25,7 @@ $container->set(Messages::class, new Messages());
 $connector = new DatabaseConnector();
 $container->set(DatabaseConnector::class, $connector);
 $container->set(UrlService::class, new UrlService($connector));
+$container->set(UrlCheckService::class, new UrlCheckService($connector));
 
 $app = AppFactory::createFromContainer($container);
 $app->add(TwigMiddleware::create($app, $container->get(Twig::class)));
@@ -39,8 +42,14 @@ $app->get('/urls/{id}', function (Request $request, Response $response, array $a
         return $this->get(Twig::class)->render($response, '404.twig')->withStatus(404);
     }
 
+    $checks = $this->get(UrlCheckService::class)->findAllBy(
+        ['url_id' => $url->getId()],
+        ['created_at' => 'DESC']
+    );
+
     $params = [
         'url' => $url,
+        'checks' => $checks,
         'message' => $this->get(Messages::class)->getFirstMessage('success')
     ];
 
@@ -48,9 +57,11 @@ $app->get('/urls/{id}', function (Request $request, Response $response, array $a
 })->setName('url-one');
 
 $app->get('/urls', function (Request $request, Response $response) {
-    $urls = $this->get(UrlService::class)->findAll();
+    $params = [
+        'urls' => $this->get(UrlService::class)->findAll(),
+    ];
 
-    return $this->get(Twig::class)->render($response, 'url-list.twig', ['urls' => $urls]);
+    return $this->get(Twig::class)->render($response, 'url-list.twig', $params);
 })->setName('url-list');
 
 $app->post('/urls', function (Request $request, Response $response) use ($router) {
@@ -69,7 +80,7 @@ $app->post('/urls', function (Request $request, Response $response) use ($router
 
     $errors = $validator->validate($urlName);
     if (count($errors) === 0) {
-        $urlId = $urlService->create($urlName);
+        $urlId = $urlService->create(['name' => $urlName]);
         $this->get(Messages::class)->addMessage('success', 'Страница успешно добавлена');
         return $response->withRedirect($router->urlFor('url-one', ['id' => $urlId]), 302);
     }
@@ -81,5 +92,25 @@ $app->post('/urls', function (Request $request, Response $response) use ($router
 
     return $this->get(Twig::class)->render($response, 'index.twig', $params)->withStatus(422);
 })->setName('url-create');
+
+$app->post('/urls/{url_id}/checks', function (Request $request, Response $response, array $args) use ($router) {
+    /** @var Url $url */
+    $url = $this->get(UrlService::class)->findById($args['url_id']);
+    if ($url === null) {
+        return $this->get(Twig::class)->render($response, '404.twig')->withStatus(404);
+    }
+
+    /** @var UrlCheckService $urlCheckService */
+    $urlCheckService = $this->get(UrlCheckService::class);
+
+    $urlCheckService->create(['urlId' => $url->getId()]);
+    $this->get(Messages::class)->addMessage('success', 'Страница успешно проверена');
+
+    $params = [
+        'id' => $url->getId(),
+    ];
+
+    return $response->withRedirect($router->urlFor('url-one', $params), 302);
+})->setName('url-check-create');
 
 $app->run();

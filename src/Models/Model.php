@@ -9,14 +9,24 @@ use DateTimeImmutable;
 
 abstract class Model
 {
-    public function __set(string $name, $value): void
+    public function __set(string $name, mixed $value): void
     {
-        $method = 'set' . SnakeCamelCaseConverterHelper::convertToCamelCase($name);
+        $method = $this->generateMethodName($name);
 
+        $this->$method($this->prepareValue($value));
+    }
+
+    protected function generateMethodName(string $name): string
+    {
+        return 'set' . SnakeCamelCaseConverterHelper::convertToCamelCase($name);
+    }
+
+    protected function prepareValue(mixed $value): mixed
+    {
         if (is_string($value) && strtotime($value)) {
             $value = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $value);
         }
 
-        $this->$method($value);
+        return $value;
     }
 }
