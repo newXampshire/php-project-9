@@ -1,11 +1,14 @@
 <?php
 
 use App\DB\DatabaseConnector;
+use App\ExternalServices\GuzzleService;
 use App\Models\Url;
 use App\Services\UrlCheckService;
 use App\Services\UrlService;
 use App\Validators\UrlValidator;
 use DI\Container;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\RequestException;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Factory\AppFactory;
@@ -25,7 +28,7 @@ $container->set(Messages::class, new Messages());
 $connector = new DatabaseConnector();
 $container->set(DatabaseConnector::class, $connector);
 $container->set(UrlService::class, new UrlService($connector));
-$container->set(UrlCheckService::class, new UrlCheckService($connector));
+$container->set(UrlCheckService::class, new UrlCheckService($connector, new GuzzleService()));
 
 $app = AppFactory::createFromContainer($container);
 $app->add(TwigMiddleware::create($app, $container->get(Twig::class)));
@@ -50,7 +53,7 @@ $app->get('/urls/{id}', function (Request $request, Response $response, array $a
     $params = [
         'url' => $url,
         'checks' => $checks,
-        'message' => $this->get(Messages::class)->getFirstMessage('success')
+        'messages' => $this->get(Messages::class)->getMessages()
     ];
 
     return $this->get(Twig::class)->render($response, 'url-one.twig', $params);
@@ -100,15 +103,20 @@ $app->post('/urls/{url_id}/checks', function (Request $request, Response $respon
         return $this->get(Twig::class)->render($response, '404.twig')->withStatus(404);
     }
 
+    $params = ['id' => $url->getId()];
+    $messages = $this->get(Messages::class);
+
     /** @var UrlCheckService $urlCheckService */
     $urlCheckService = $this->get(UrlCheckService::class);
 
-    $urlCheckService->create(['urlId' => $url->getId()]);
-    $this->get(Messages::class)->addMessage('success', 'Страница успешно проверена');
-
-    $params = [
-        'id' => $url->getId(),
-    ];
+    try {
+        $urlCheckService->create(['url' => $url]);
+        $messages->addMessage('success', 'Страница успешно проверена');
+    } catch (RequestException) {
+        $messages->addMessage('warning', 'Проверка была выполнена успешно, но сервер ответил с ошибкой');
+    } catch (ConnectException) {
+        $messages->addMessage('danger', 'Произошла ошибка при проверке, не удалось подключиться');
+    }
 
     return $response->withRedirect($router->urlFor('url-one', $params), 302);
 })->setName('url-check-create');
