@@ -1,0 +1,24 @@
+{
+    "name": "hexlet/code",
+    "description": "pages analyzer",
+    "type": "project",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Hexlet\\Code\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "New Xampshire",
+            "email": "gun19sinking@ya.ru"
+        }
+    ],
+    "require": {
+        "slim/slim": "4.*",
+        "slim/psr7": "^1.7"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "*"
+    }
+}
