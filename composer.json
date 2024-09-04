@@ -5,7 +5,7 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Hexlet\\Code\\": "src/"
+            "App\\": "src/"
         }
     },
     "authors": [
@@ -17,7 +17,11 @@
     "require": {
         "slim/slim": "4.*",
         "slim/psr7": "^1.7",
-        "slim/twig-view": "^3.4"
+        "slim/twig-view": "^3.4",
+        "php-di/php-di": "^7.0",
+        "vlucas/phpdotenv": "^5.6",
+        "slim/http": "^1.4",
+        "slim/flash": "^0.4.0"
     },
     "require-dev": {
         "squizlabs/php_codesniffer": "*"
