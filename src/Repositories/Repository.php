@@ -29,7 +29,7 @@ abstract class Repository
         );
     }
 
-    public function findOneBy($key, $value): ?Model
+    public function findOneBy(string $key, mixed $value): ?Model
     {
         $sql = "SELECT * FROM " . static::TABLE_NAME . " WHERE $key = :key";
 

@@ -8,7 +8,7 @@ use DateTimeImmutable;
 
 class UrlCheck extends Model
 {
-    private int $id;
+    private int $id; // @phpstan-ignore-line
     private int $urlId;
     private ?string $statusCode = null;
     private ?string $h1 = null;

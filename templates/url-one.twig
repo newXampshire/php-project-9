@@ -1,8 +1,14 @@
 {% include 'header.twig' %}
 
-{% if message is not empty %}
-<div class="alert alert-success" role="alert">{{ message }}</div>
-{% endif %}
+{% for message in messages.success %}
+    <div class="alert alert-success" role="alert">{{ message }}</div>
+{% endfor %}
+{% for message in messages.warning %}
+    <div class="alert alert-warning" role="alert">{{ message }}</div>
+{% endfor %}
+{% for message in messages.danger %}
+    <div class="alert alert-danger" role="alert">{{ message }}</div>
+{% endfor %}
 
 <main class="flex-grow-1">
     <div class="container-lg mt-3">

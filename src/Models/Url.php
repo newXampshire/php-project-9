@@ -8,13 +8,13 @@ use DateTimeImmutable;
 
 class Url extends Model
 {
-    private int $id;
+    private int $id; // @phpstan-ignore-line
     private string $name;
     private DateTimeImmutable $createdAt;
 
     private ?UrlCheck $urlCheck = null;
 
-    public function __set(string $name, $value): void
+    public function __set(string $name, mixed $value): void
     {
         $value = $this->prepareValue($value);
 

@@ -10,7 +10,8 @@ class DotenvHelper
 {
     public static function loadEnvFiles(): void
     {
-        $dotenv = Dotenv::createUnsafeImmutable(__DIR__ . '/../../');
-        $dotenv->load();
+        $dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
+
+        $dotenv->safeLoad();
     }
 }

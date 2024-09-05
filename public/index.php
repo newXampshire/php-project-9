@@ -1,15 +1,18 @@
 <?php
 
 use App\DB\DatabaseConnector;
+use App\ExternalServices\GuzzleService;
 use App\Models\Url;
 use App\Services\UrlCheckService;
 use App\Services\UrlService;
 use App\Validators\UrlValidator;
 use DI\Container;
-use Psr\Http\Message\ResponseInterface as Response;
-use Psr\Http\Message\ServerRequestInterface as Request;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\RequestException;
 use Slim\Factory\AppFactory;
 use Slim\Flash\Messages;
+use Slim\Http\Response;
+use Slim\Http\ServerRequest as Request;
 use Slim\Views\Twig;
 use Slim\Views\TwigMiddleware;
 
@@ -25,7 +28,7 @@ $container->set(Messages::class, new Messages());
 $connector = new DatabaseConnector();
 $container->set(DatabaseConnector::class, $connector);
 $container->set(UrlService::class, new UrlService($connector));
-$container->set(UrlCheckService::class, new UrlCheckService($connector));
+$container->set(UrlCheckService::class, new UrlCheckService($connector, new GuzzleService()));
 
 $app = AppFactory::createFromContainer($container);
 $app->add(TwigMiddleware::create($app, $container->get(Twig::class)));
@@ -50,7 +53,7 @@ $app->get('/urls/{id}', function (Request $request, Response $response, array $a
     $params = [
         'url' => $url,
         'checks' => $checks,
-        'message' => $this->get(Messages::class)->getFirstMessage('success')
+        'messages' => $this->get(Messages::class)->getMessages()
     ];
 
     return $this->get(Twig::class)->render($response, 'url-one.twig', $params);
@@ -65,15 +68,16 @@ $app->get('/urls', function (Request $request, Response $response) {
 })->setName('url-list');
 
 $app->post('/urls', function (Request $request, Response $response) use ($router) {
-    $urlName = $request->getParsedBody()['url']['name'];
+    $urlName = $request->getParsedBody()['url']['name']; // @phpstan-ignore-line
 
     /** @var UrlService $urlService */
     $urlService = $this->get(UrlService::class);
 
+    /** @var Url|null $url */
     $url = $urlService->findByKey('name', $urlName);
     if ($url !== null) {
         $this->get(Messages::class)->addMessage('success', 'Страница уже существует');
-        return $response->withRedirect($router->urlFor('url-one', ['id' => $url->getId()]), 302);
+        return $response->withRedirect($router->urlFor('url-one', ['id' => (string)$url->getId()]), 302);
     }
 
     $validator = new UrlValidator();
@@ -82,7 +86,7 @@ $app->post('/urls', function (Request $request, Response $response) use ($router
     if (count($errors) === 0) {
         $urlId = $urlService->create(['name' => $urlName]);
         $this->get(Messages::class)->addMessage('success', 'Страница успешно добавлена');
-        return $response->withRedirect($router->urlFor('url-one', ['id' => $urlId]), 302);
+        return $response->withRedirect($router->urlFor('url-one', ['id' => (string)$urlId]), 302);
     }
 
     $params = [
@@ -94,21 +98,26 @@ $app->post('/urls', function (Request $request, Response $response) use ($router
 })->setName('url-create');
 
 $app->post('/urls/{url_id}/checks', function (Request $request, Response $response, array $args) use ($router) {
-    /** @var Url $url */
+    /** @var Url|null $url */
     $url = $this->get(UrlService::class)->findById($args['url_id']);
     if ($url === null) {
         return $this->get(Twig::class)->render($response, '404.twig')->withStatus(404);
     }
 
+    $params = ['id' => (string)$url->getId()];
+    $messages = $this->get(Messages::class);
+
     /** @var UrlCheckService $urlCheckService */
     $urlCheckService = $this->get(UrlCheckService::class);
 
-    $urlCheckService->create(['urlId' => $url->getId()]);
-    $this->get(Messages::class)->addMessage('success', 'Страница успешно проверена');
-
-    $params = [
-        'id' => $url->getId(),
-    ];
+    try {
+        $urlCheckService->create(['url' => $url]);
+        $messages->addMessage('success', 'Страница успешно проверена');
+    } catch (RequestException) {
+        $messages->addMessage('warning', 'Проверка была выполнена успешно, но сервер ответил с ошибкой');
+    } catch (ConnectException) {
+        $messages->addMessage('danger', 'Произошла ошибка при проверке, не удалось подключиться');
+    }
 
     return $response->withRedirect($router->urlFor('url-one', $params), 302);
 })->setName('url-check-create');
